@@ -58,7 +58,7 @@ function createLoaderObject(
 	loader: JsLoaderItem,
 	compiler: Compiler
 ): LoaderObject {
-	var obj: any = {
+	const obj: any = {
 		path: null,
 		query: null,
 		fragment: null,
@@ -227,14 +227,11 @@ class JsSourceMap {
 	}
 }
 
-const loadLoaderAsync: (loaderObject: LoaderObject) => Promise<void> =
-	promisify(loadLoader);
-
 const runSyncOrAsync = promisify(function runSyncOrAsync(
 	fn: Function,
 	context: LoaderContext,
 	args: any[],
-	callback: (err: Error | null, args: any[]) => void
+	callback: (err?: Error | null, args?: any[]) => void
 ) {
 	let isSync = true;
 	let isDone = false;
@@ -249,7 +246,7 @@ const runSyncOrAsync = promisify(function runSyncOrAsync(
 		isSync = false;
 		return innerCallback;
 	};
-	const innerCallback = (context.callback = (err, ...args) => {
+	const innerCallback = (context.callback = (err: Error, ...args) => {
 		if (isDone) {
 			if (reportedError) return; // ignore
 			throw new Error("callback(): The callback was already called.");
@@ -257,7 +254,6 @@ const runSyncOrAsync = promisify(function runSyncOrAsync(
 		isDone = true;
 		isSync = false;
 		try {
-			// @ts-expect-error
 			callback(err, args);
 		} catch (e) {
 			isError = true;
@@ -271,7 +267,6 @@ const runSyncOrAsync = promisify(function runSyncOrAsync(
 		if (isSync) {
 			isDone = true;
 			if (result === undefined) {
-				// @ts-expect-error
 				callback();
 				return;
 			}
@@ -288,7 +283,7 @@ const runSyncOrAsync = promisify(function runSyncOrAsync(
 			callback(null, [result]);
 			return;
 		}
-	} catch (e: unknown) {
+	} catch (e) {
 		// use string for napi getter
 		const err = e as Error;
 		if ("hideStack" in err && err.hideStack) {
@@ -304,8 +299,7 @@ const runSyncOrAsync = promisify(function runSyncOrAsync(
 		}
 		isDone = true;
 		reportedError = true;
-		// @ts-expect-error
-		callback(e);
+		callback(e as Error);
 	}
 });
 
@@ -558,20 +552,20 @@ export async function runLoaders(
 	const getResolveContext = () => {
 		return {
 			fileDependencies: {
-				// @ts-expect-error: Mocking insert-only `Set<T>`
-				add: d => {
+				// Mocking insert-only `Set<T>`
+				add: (d: string) => {
 					loaderContext.addDependency(d);
 				}
 			},
 			contextDependencies: {
-				// @ts-expect-error: Mocking insert-only `Set<T>`
-				add: d => {
+				// Mocking insert-only `Set<T>`
+				add: (d: string) => {
 					loaderContext.addContextDependency(d);
 				}
 			},
 			missingDependencies: {
-				// @ts-expect-error: Mocking insert-only `Set<T>`
-				add: d => {
+				// Mocking insert-only `Set<T>`
+				add: (d: string) => {
 					loaderContext.addMissingDependency(d);
 				}
 			}
@@ -674,17 +668,15 @@ export async function runLoaders(
 			}
 		} else {
 			source = new RawSource(
-				// @ts-expect-error webpack-sources type declaration is wrong
-				content
+				// webpack-sources type declaration is wrong
+				content as string
 			);
 		}
-		// @ts-expect-error
-		compiler._lastCompilation.__internal__emit_asset_from_loader(
+
+		compiler._lastCompilation?.__internal__emit_asset_from_loader(
 			name,
-			// @ts-expect-error
-			source,
-			// @ts-expect-error
-			assetInfo,
+			source!,
+			assetInfo!,
 			context._moduleIdentifier
 		);
 	};
@@ -793,7 +785,7 @@ export async function runLoaders(
 					continue;
 				}
 
-				await loadLoaderAsync(currentLoaderObject);
+				await loadLoader(currentLoaderObject);
 				const fn = currentLoaderObject.pitch;
 				currentLoaderObject.pitchExecuted = true;
 				if (!fn) continue;
@@ -833,7 +825,7 @@ export async function runLoaders(
 					continue;
 				}
 
-				await loadLoaderAsync(currentLoaderObject);
+				await loadLoader(currentLoaderObject);
 				const fn = currentLoaderObject.normal;
 				currentLoaderObject.normalExecuted = true;
 				if (!fn) continue;
